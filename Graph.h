@@ -1,11 +1,9 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
-#include <iostream>
-#include <set>
-#include <unordered_set>
+#include <string>
+#include <unordered_map>
 #include <vector>
-#include <random>
 using namespace std;
 
 struct Edge {
@@ -21,7 +19,16 @@ struct Graph {
 	int nodeNum;
 	// number of edge
 	int edgeNum;
+	// number of labels
+	int labelNum;
 	
+	// Node name to id map
+	unordered_map<string, int> nodeNameToId;
+
+	// Node labels
+	unordered_map<string, int> labelNameToId;
+	vector<int> labels;
+
 	// storage for edges
 	vector<vector<Edge> > inEdges;
 	vector<vector<Edge> > outEdges;
@@ -45,8 +52,7 @@ struct Graph {
 	// Read from cora format
 	// fromNodeId	toNodeId
 	void initFromCoraGraphFile(const string& fileName);
-
-	Graph sampleDegreeLiveEdgeGraph(double edgeProb);
+	void loadCoraLabelFile(const string& labelFile);
 };
 
 #endif

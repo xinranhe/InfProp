@@ -2,9 +2,11 @@ cc_library(
 	name = "info_prop",
 	srcs = [
 		"Graph.cpp",
+		"InfoProp.cpp",
 	],
 	hdrs = [
 		"Graph.h",
+		"InfoProp.h",
 	],
 	visibility = ["//visibility:public"],
 )

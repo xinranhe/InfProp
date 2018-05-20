@@ -2,6 +2,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,9 +16,7 @@ void Graph::addEdge(int st, int ed, double w) {
 void Graph::initFromCoraGraphFile(const string& fileName) {
 	ifstream fin;
 	fin.open(fileName);
-
 	vector<Edge> edges;
-	unordered_map<string, int> nodeNameToId;
 	
 	string stNodeName, edNodeName;
 	int stNodeId, edNodeId;
@@ -36,6 +35,7 @@ void Graph::initFromCoraGraphFile(const string& fileName) {
 		}
 		edgeNum++;
 		edges.push_back(Edge(stNodeId, edNodeId, 1.0));
+		edges.push_back(Edge(edNodeId, stNodeId, 1.0));
 	}
 
 	init();
@@ -46,22 +46,24 @@ void Graph::initFromCoraGraphFile(const string& fileName) {
 	}
 	cout << "Loaded graph with " << nodeNum << " nodes and " << edgeNum << " edges." << endl; 
 }
-	
-Graph Graph::sampleDegreeLiveEdgeGraph(double edgeProb) {
-	Graph newGraph = Graph(nodeNum);
-	for (int i = 0; i < nodeNum; i++) {
-		int outDegree = outEdges[i].size();
-		if (outDegree == 0) {
-			continue;
+
+void Graph::loadCoraLabelFile(const string& labelFile) {
+	ifstream fin;
+	fin.open(labelFile);
+	labelNameToId.clear();
+	labels = vector<int>(nodeNum, 0);
+	labelNum = 0;
+	string tempLine;
+	while(getline(fin, tempLine)) {
+		stringstream sin(tempLine);
+		string field;
+		vector<string> fields;
+		while(sin >> field) fields.push_back(field);
+		int nodeId = nodeNameToId[fields[0]];
+		string labelName = fields[fields.size() - 1];
+		if (labelNameToId.find(labelName) == labelNameToId.end()) {
+			labelNameToId[labelName] =  ++labelNum;
 		}
-		double weight = 1.0 / outDegree;
-		for (int j = 0; j < outDegree; j++) {
-			if (double(rand())/RAND_MAX < edgeProb) {
-				newGraph.edgeNum++;
-				newGraph.addEdge(outEdges[i][j].stId, outEdges[i][j].edId, weight);
-			}
-		}
+		labels[nodeId] = labelNameToId[labelName];
 	}
-	cout << "Sampled live edge graph with " << nodeNum << " nodes and " << newGraph.edgeNum << " edges." << endl; 
-	return newGraph;
 }
