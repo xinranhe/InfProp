@@ -23,7 +23,7 @@ struct DijNode {
 	}
 };
 
-// label id starts from 1, 0 is reserved for the node note activated
+// label id starts from 1, 0 is reserved for the node not activated
 vector<vector<double>> infoProp(Graph& graph, unordered_map<int, int>& seedToLabel, double edgeProb, int numSimulations) {
 	default_random_engine generator;
 	int n =  graph.nodeNum;
@@ -88,9 +88,9 @@ void labelNodesWithDijkstra(Graph& graph, unordered_map<int, int>& seedToLabel, 
 		}
 		result[nid] = topNode.label;
 		for (int i = 0; i < graph.outEdges[nid].size(); i++) {
-			//if (double(rand())/RAND_MAX > edgeProb) {
-			//	continue;
-			//}
+			if (double(rand())/RAND_MAX > edgeProb) {
+				continue;
+			}
 			int ed = graph.outEdges[nid][i].edId;
 			exponential_distribution<double> myDist = exponential_distribution<double>(1.0 / graph.outEdges[nid].size());
 			double weight = myDist(generator);

@@ -34,6 +34,7 @@ void Graph::initFromCoraGraphFile(const string& fileName) {
 			continue;
 		}
 		edgeNum++;
+		// Though the citation graph is directional, we populate the graph for both direction for better performance.
 		edges.push_back(Edge(stNodeId, edNodeId, 1.0));
 		edges.push_back(Edge(edNodeId, stNodeId, 1.0));
 	}
