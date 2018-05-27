@@ -1,4 +1,4 @@
-#include "InfoProp.h"
+#include "InfProp.h"
 
 #include <iostream>
 #include <queue>
@@ -24,14 +24,14 @@ struct DijNode {
 };
 
 // label id starts from 1, 0 is reserved for the node not activated
-vector<vector<double>> infoProp(Graph& graph, unordered_map<int, int>& seedToLabel, double edgeProb, int numSimulations) {
+vector<vector<double>> infoProp(Graph& graph, vector<int>& train_nodes, double edgeProb, int numSimulations, bool useDegreeWeight) {
 	default_random_engine generator;
 	int n =  graph.nodeNum;
 	vector<vector<double>> results = vector<vector<double>>(n, vector<double>(graph.labelNum + 1, 0.0));
 	cout << "Runing info prop:";
 	for (int i = 0; i < numSimulations; i++) {
-		labelNodesWithDijkstra(graph, seedToLabel, results, generator, edgeProb);
-		if (i % 100 == 1) {
+		labelNodesWithDijkstra(graph, train_nodes, results, generator, edgeProb, useDegreeWeight);
+		if (true) {
 			cout << i << " ";
 			cout.flush();
 		}
@@ -45,39 +45,24 @@ vector<vector<double>> infoProp(Graph& graph, unordered_map<int, int>& seedToLab
 	return results;
 }
 
-int bfs(Graph& graph, unordered_map<int, int>& seedToLabel) {
-	vector<bool> isVisited(graph.nodeNum, 0);
-	queue<DijNode> myQueue;
-	for (auto it = seedToLabel.begin(); it != seedToLabel.end(); ++it) {
-		myQueue.push(DijNode(it->first, it->second, 0));
-		isVisited[it->first] = true;
-	}
-	while(!myQueue.empty()) {
-		const DijNode topNode = myQueue.front();
-		myQueue.pop();
-		int nid = topNode.nodeId;
-		for (int i = 0; i < graph.outEdges[nid].size(); i++) {
-			int ed = graph.outEdges[nid][i].edId;
-			if (!isVisited[ed]) {
-				isVisited[ed] = true;
-				myQueue.push(DijNode(ed, topNode.label, 0));
-			}
-		}
-	}
-	int count = 0;
-	for (int i = 0; i < graph.nodeNum; i++) {
-		count += isVisited[i];
-	}
-	return count;
-}
-
-void labelNodesWithDijkstra(Graph& graph, unordered_map<int, int>& seedToLabel, vector<vector<double>>& results, default_random_engine& generator, double edgeProb) {
+void labelNodesWithDijkstra(Graph& graph, vector<int>& train_nodes, vector<vector<double>>& results, default_random_engine& generator, double edgeProb, bool useDegreeWeight) {
 	vector<int> result(graph.nodeNum, 0);
 	vector<double> distance = vector<double>(graph.nodeNum, 1e100);
 	priority_queue<DijNode> myQueue;
-	for (auto it = seedToLabel.begin(); it != seedToLabel.end(); ++it) {
-		myQueue.push(DijNode(it->first, it->second, 0));
-		distance[it->first] = 0.0;
+	for (int i = 0; i < train_nodes.size(); i++) {
+		// For multi-label case, we uniformly sample one for propagation.
+		const vector<int>& allLables = graph.labels[train_nodes[i]];
+		if (allLables.size() == 0) {
+			continue;
+		}
+		int label;
+		if (allLables.size() == 1) {
+			label = allLables[0];
+		} else {
+			label = allLables[rand() % allLables.size()];
+		}
+		myQueue.push(DijNode(train_nodes[i], label, 0));
+		distance[train_nodes[i]] = 0.0;
 	}
 	while(!myQueue.empty()) {
 		const DijNode topNode = myQueue.top();
@@ -92,7 +77,13 @@ void labelNodesWithDijkstra(Graph& graph, unordered_map<int, int>& seedToLabel, 
 				continue;
 			}
 			int ed = graph.outEdges[nid][i].edId;
-			exponential_distribution<double> myDist = exponential_distribution<double>(1.0 / graph.outEdges[nid].size());
+			double expParam;
+			if (useDegreeWeight) {
+				expParam = 1.0 / graph.outEdges[nid].size();
+			} else {
+				expParam = graph.outEdges[nid][i].w;
+			}
+			exponential_distribution<double> myDist = exponential_distribution<double>(expParam);
 			double weight = myDist(generator);
 			if (distance[nid] + weight < distance[ed]) {
 				distance[ed] = distance[nid] + weight;

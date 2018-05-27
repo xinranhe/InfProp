@@ -11,60 +11,22 @@ using namespace std;
 void Graph::addEdge(int st, int ed, double w) {
 	inEdges[ed].push_back(Edge(st,ed,w));
 	outEdges[st].push_back(Edge(st,ed,w));
+	edgeNum++;
 }
 
-void Graph::initFromCoraGraphFile(const string& fileName) {
-	ifstream fin;
-	fin.open(fileName);
-	vector<Edge> edges;
-	
-	string stNodeName, edNodeName;
-	int stNodeId, edNodeId;
-	while(fin >> stNodeName >> edNodeName) {
-		if (nodeNameToId.find(stNodeName) == nodeNameToId.end()) {
-			nodeNameToId[stNodeName] = nodeNum++;
-		}
-		if (nodeNameToId.find(edNodeName) == nodeNameToId.end()) {
-			nodeNameToId[edNodeName] = nodeNum++;
-		}
-		stNodeId = nodeNameToId[stNodeName];
-		edNodeId = nodeNameToId[edNodeName];
-		if (stNodeId == edNodeId) {
-			cout << "Self loop found:" << stNodeId << endl;
+void Graph::randomTrainTestSplit(double trainRatio) {
+	trainNodes.clear();
+	testNodes.clear();
+	for (int i = 0; i < nodeNum; i++) {
+		// No label available for the node
+		if (labels[i].size() == 0 || labels[i][0] == 0) {
 			continue;
 		}
-		edgeNum++;
-		// Though the citation graph is directional, we populate the graph for both direction for better performance.
-		edges.push_back(Edge(stNodeId, edNodeId, 1.0));
-		edges.push_back(Edge(edNodeId, stNodeId, 1.0));
-	}
-
-	init();
-	for (int i = 0; i < edges.size(); i++) {
-		int st = edges[i].stId;
-		int ed = edges[i].edId;
-		addEdge(st, ed, 1.0);
-	}
-	cout << "Loaded graph with " << nodeNum << " nodes and " << edgeNum << " edges." << endl; 
-}
-
-void Graph::loadCoraLabelFile(const string& labelFile) {
-	ifstream fin;
-	fin.open(labelFile);
-	labelNameToId.clear();
-	labels = vector<int>(nodeNum, 0);
-	labelNum = 0;
-	string tempLine;
-	while(getline(fin, tempLine)) {
-		stringstream sin(tempLine);
-		string field;
-		vector<string> fields;
-		while(sin >> field) fields.push_back(field);
-		int nodeId = nodeNameToId[fields[0]];
-		string labelName = fields[fields.size() - 1];
-		if (labelNameToId.find(labelName) == labelNameToId.end()) {
-			labelNameToId[labelName] =  ++labelNum;
+		if (1.0 * rand() / RAND_MAX <= trainRatio) {
+			trainNodes.push_back(i);
+		} else {
+			testNodes.push_back(i);
 		}
-		labels[nodeId] = labelNameToId[labelName];
 	}
+	printf("Sampled %d train nodes and %d test nodes", trainNodes.size(), testNodes.size());
 }

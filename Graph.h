@@ -21,13 +21,13 @@ struct Graph {
 	int edgeNum;
 	// number of labels
 	int labelNum;
-	
-	// Node name to id map
-	unordered_map<string, int> nodeNameToId;
 
-	// Node labels
-	unordered_map<string, int> labelNameToId;
-	vector<int> labels;
+	// Node labels: label id starts from 1, 0 is reserved for unknown
+	vector<vector<int>> labels;
+
+	// Train and test nodes if provided
+	vector<int> trainNodes;
+	vector<int> testNodes;
 
 	// storage for edges
 	vector<vector<Edge> > inEdges;
@@ -36,23 +36,22 @@ struct Graph {
 	// constructor
 	Graph(int _nodeNum): nodeNum(_nodeNum) {
 		edgeNum = 0;
+		labelNum = 0;
 		init();
 	}
 	Graph(): nodeNum(0) {
 		edgeNum = 0;
+		labelNum = 0;
 		init();
 	}
 	void init() {
 		inEdges.resize(nodeNum);
 		outEdges.resize(nodeNum);
+		labels.resize(nodeNum);
 	}
 
 	void addEdge(int st, int ed, double w);
-
-	// Read from cora format
-	// fromNodeId	toNodeId
-	void initFromCoraGraphFile(const string& fileName);
-	void loadCoraLabelFile(const string& labelFile);
+	void randomTrainTestSplit(double trainRatio);
 };
 
 #endif

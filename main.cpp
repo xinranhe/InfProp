@@ -1,5 +1,6 @@
+#include "Dataset.h"
 #include "Graph.h"
-#include "InfoProp.h"
+#include "InfProp.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,70 +16,72 @@ const string CORA_GRAPH_FILE_PATH = "data/cora.cites";
 const string CORA_LABEL_FILE_PATH = "data/cora.content";
 
 struct ExperimentParams {
-	// Train/test split
+	// Train/test split: -1 if use dataset provided train test split
 	double trainRatio;
 	// Algorithm params
 	int numSimulations;
 	double edgeProb;
-
+	bool useDegreeWeight;
 	// Default parameters
 	ExperimentParams() {
-		trainRatio = 0.005;
+		trainRatio = 0.1;
 		numSimulations = 1000;
-		edgeProb = 0.5;
+		edgeProb = 1.0;
+		useDegreeWeight = false;
 	}
 
 	string toString() {
 		return "trainRatio:" + to_string(trainRatio) + 
 			   " numSims:" + to_string(numSimulations) + 
-		       " edgProb:" + to_string(edgeProb);
+		       " edgProb:" + to_string(edgeProb) +
+		       " useDegreeWeight:" + to_string(useDegreeWeight);
 	}
 };
 
-double computeAccuracy(Graph& graph, vector<vector<double>> results, vector<int> testNodes) {
+void saveInforPropResult(const string& resultFile, const vector<vector<double>>& results) {
+	ofstream fout(resultFile);
+	for (int i = 0; i < results.size(); i++) {
+		fout << i;
+		for (int j = 0; j < results[i].size(); j++) {
+			fout << " " << results[i][j];
+		}
+		fout << endl;
+	}
+	fout.close();
+}
+
+double computeAccuracy(Graph& graph, vector<vector<double>>& results, vector<int> testNodes) {
 	int count = 0;
 	for (int i = 0; i < testNodes.size(); i++) {
 		int nid = testNodes[i];
-		int trueLabel = graph.labels[nid];
+		int trueLabel = graph.labels[nid][0];
 		int inferredLabel = distance(results[nid].begin(), max_element(results[nid].begin()+1, results[nid].end()));
 		count += trueLabel == inferredLabel;
 	}
 	return 1.0 * count / testNodes.size();
 }
 
-void runInfoPropExperiment(Graph& graph, ExperimentParams params) {
+vector<vector<double>> runInfoPropExperiment(Graph& graph, ExperimentParams params) {
 	// Train test split
-	unordered_map<int, int> trainSeedsLabels;
-	vector<int> testNodes;
-	for (int i = 0; i < graph.nodeNum; i++) {
-		// No label available for the node
-		if (graph.labels[i] == 0) {
-			continue;
-		}
-		if (1.0 * rand() / RAND_MAX <= params.trainRatio) {
-			trainSeedsLabels[i] = graph.labels[i];
-		} else {
-			testNodes.push_back(i);
-		}
+	if (params.trainRatio > 0) {
+		graph.randomTrainTestSplit(params.trainRatio);
 	}
-	cout << "numTrainNodes:" << trainSeedsLabels.size() << " " << "numTestNodes:" << testNodes.size() << endl;
-
 	// Run InfoProp algoirthm
-	vector<vector<double>> results = infoProp(graph, trainSeedsLabels, params.edgeProb, params.numSimulations);
+	vector<vector<double>> results = infoProp(graph, graph.trainNodes, params.edgeProb, params.numSimulations, params.useDegreeWeight);
 	cout << "Exp setting:" << params.toString() << endl;
-	cout << "Accuracy:" << computeAccuracy(graph, results, testNodes) << endl;
+	cout << "Accuracy:" << computeAccuracy(graph, results, graph.testNodes) << endl;
+	return results;
+}
+
+void runCoraExperiment() {
+	Graph coraGraph = loadFromRawCoraDataset(CORA_GRAPH_FILE_PATH, CORA_LABEL_FILE_PATH);
+	ExperimentParams params = ExperimentParams();
+	runInfoPropExperiment(coraGraph, params);
 }
 
 
 int main(int argc, char** argv) {
 	srand (time(NULL));
-	// Load cora dataset
-	Graph coraGraph = Graph();
-	coraGraph.initFromCoraGraphFile(CORA_GRAPH_FILE_PATH);
-	coraGraph.loadCoraLabelFile(CORA_LABEL_FILE_PATH);
-
-	// Experiment setting
-	ExperimentParams params = ExperimentParams();
-	runInfoPropExperiment(coraGraph, params);
+	runCoraExperiment();
 	return 0;
 }
